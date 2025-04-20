@@ -113,7 +113,7 @@ export const generatePDFReport = async ({
   }
   
   // Add content excerpt
-  const contentStartY = doc.lastAutoTable?.finalY || 140;
+  const contentStartY = doc.autoTable.previous?.finalY || 140;
   doc.setFontSize(14);
   doc.setTextColor(0, 0, 0);
   doc.text('Content Excerpt:', 20, contentStartY + 10);
