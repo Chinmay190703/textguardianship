@@ -88,10 +88,11 @@ export const generatePDFReport = async ({
   doc.text(result.message.replace('⚠️ ', '').replace('✅ ', ''), 20, 112);
   
   // Add matched sources if available
+  let finalY = 112;
   if (result.matchedSources && result.matchedSources.length > 0) {
     doc.setFontSize(14);
     doc.setTextColor(0, 0, 0);
-    doc.text('Matched Sources:', 20, 130);
+    doc.text('Matched Sources:', 20, finalY + 20);
     
     const tableColumn = ['Source', 'Similarity'];
     const tableRows = result.matchedSources.map(source => [
@@ -99,8 +100,8 @@ export const generatePDFReport = async ({
       `${Math.round(source.similarity * 100)}%`
     ]);
     
-    doc.autoTable({
-      startY: 135,
+    const autoTableResult = doc.autoTable({
+      startY: finalY + 25,
       head: [tableColumn],
       body: tableRows,
       theme: 'striped',
@@ -110,13 +111,14 @@ export const generatePDFReport = async ({
         1: { cellWidth: 30, halign: 'center' }
       }
     });
+
+    finalY = autoTableResult.finalY || finalY + 25;
   }
   
   // Add content excerpt
-  const contentStartY = doc.autoTable.previous?.finalY || 140;
   doc.setFontSize(14);
   doc.setTextColor(0, 0, 0);
-  doc.text('Content Excerpt:', 20, contentStartY + 10);
+  doc.text('Content Excerpt:', 20, finalY + 10);
   
   doc.setFontSize(10);
   doc.setTextColor(80, 80, 80);
@@ -124,7 +126,7 @@ export const generatePDFReport = async ({
   // Wrap text to fit in page
   const contentExcerpt = content.length > 500 ? content.substring(0, 500) + '...' : content;
   const splitText = doc.splitTextToSize(contentExcerpt, 170);
-  doc.text(splitText, 20, contentStartY + 20);
+  doc.text(splitText, 20, finalY + 20);
   
   // Footer
   doc.setFontSize(10);
@@ -133,3 +135,4 @@ export const generatePDFReport = async ({
   
   return doc.output('blob');
 };
+
