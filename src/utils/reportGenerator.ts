@@ -3,9 +3,10 @@ import { PlagiarismResultType } from '@/components/plagiarism/PlagiarismChecker'
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
 
+// Extend the jsPDF type to include autoTable
 declare module 'jspdf' {
   interface jsPDF {
-    autoTable: (options: any) => jsPDF;
+    autoTable: (options: any) => { finalY: number };
   }
 }
 
@@ -100,7 +101,7 @@ export const generatePDFReport = async ({
       `${Math.round(source.similarity * 100)}%`
     ]);
     
-    const autoTableResult = doc.autoTable({
+    const tableResult = doc.autoTable({
       startY: finalY + 25,
       head: [tableColumn],
       body: tableRows,
@@ -112,7 +113,7 @@ export const generatePDFReport = async ({
       }
     });
 
-    finalY = autoTableResult.finalY || finalY + 25;
+    finalY = tableResult.finalY;
   }
   
   // Add content excerpt
@@ -135,4 +136,3 @@ export const generatePDFReport = async ({
   
   return doc.output('blob');
 };
-
