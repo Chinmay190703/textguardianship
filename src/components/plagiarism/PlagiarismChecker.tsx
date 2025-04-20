@@ -8,9 +8,10 @@ import { cn } from '@/lib/utils';
 import PlagiarismResult from './PlagiarismResult';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FileUploader } from './FileUploader';
-import { Loader2, Download, FileText } from 'lucide-react';
+import { Loader2, Download, FileText, BookOpen, ShieldCheck } from 'lucide-react';
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import PDFViewer from './PDFViewer';
+import { generatePDFReport } from '@/utils/reportGenerator';
 
 export type PlagiarismResultType = {
   similarity: number;
@@ -28,6 +29,7 @@ const PlagiarismChecker: React.FC = () => {
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [extractedText, setExtractedText] = useState('');
   const [isPdfPreviewOpen, setIsPdfPreviewOpen] = useState(false);
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -111,40 +113,72 @@ const PlagiarismChecker: React.FC = () => {
   const generateReport = async () => {
     if (!result) return;
     
-    toast.info('Generating PDF report...');
-    
-    // In a real app, this would call the Python backend to generate the report
-    // For now, we'll simulate generation with a timeout
-    setTimeout(() => {
-      toast.success('Report generated! Downloading...');
+    try {
+      setIsGeneratingReport(true);
+      toast.info('Generating PDF report...');
       
-      // This is just a mock - in a real app the Python backend would return a PDF blob
+      const textToInclude = activeTab === 'text' ? content : extractedText;
+      const pdfBlob = await generatePDFReport({
+        title,
+        content: textToInclude,
+        result
+      });
+      
+      // Create download link for the generated PDF
+      const url = URL.createObjectURL(pdfBlob);
       const link = document.createElement('a');
-      link.href = '#';
-      link.download = `plagiarism-report-${Date.now()}.pdf`;
+      link.href = url;
+      link.download = `plagiarism-report-${title.replace(/\s+/g, '-').toLowerCase()}-${Date.now()}.pdf`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-    }, 2000);
+      URL.revokeObjectURL(url);
+      
+      toast.success('Report downloaded successfully!');
+    } catch (error) {
+      console.error('Error generating report:', error);
+      toast.error('Failed to generate report');
+    } finally {
+      setIsGeneratingReport(false);
+    }
   };
 
   return (
     <div className="w-full max-w-3xl mx-auto animate-fade-in">
-      <Card className="shadow-md border-primary/10 overflow-hidden backdrop-blur-sm">
-        <CardHeader className="space-y-1 bg-gradient-to-r from-primary/5 to-secondary/5">
-          <CardTitle className="text-2xl font-medium">Plagiarism Checker</CardTitle>
-          <CardDescription>
-            Check your text for plagiarism using AI-powered analysis
-          </CardDescription>
+      <Card className="shadow-lg border-primary/10 overflow-hidden backdrop-blur-sm bg-white/80 dark:bg-black/30">
+        <CardHeader className="space-y-1 bg-gradient-to-r from-primary/10 to-secondary/10">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="bg-primary/20 p-2 rounded-full">
+                <ShieldCheck className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <CardTitle className="text-2xl font-medium">Plagiarism Checker</CardTitle>
+                <CardDescription className="text-muted-foreground">
+                  Check your text for plagiarism using AI-powered analysis
+                </CardDescription>
+              </div>
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="p-6">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-6">
-              <TabsTrigger value="text">Text Input</TabsTrigger>
-              <TabsTrigger value="pdf">Upload PDF</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-2 mb-6 shadow-md">
+              <TabsTrigger value="text" className="data-[state=active]:bg-primary/10">
+                <div className="flex items-center gap-2">
+                  <BookOpen className="h-4 w-4" />
+                  <span>Text Input</span>
+                </div>
+              </TabsTrigger>
+              <TabsTrigger value="pdf" className="data-[state=active]:bg-primary/10">
+                <div className="flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  <span>Upload PDF</span>
+                </div>
+              </TabsTrigger>
             </TabsList>
             
-            <TabsContent value="text">
+            <TabsContent value="text" className="focus-visible:outline-none focus-visible:ring-0">
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="space-y-2">
                   <label htmlFor="title" className="text-sm font-medium">
@@ -156,8 +190,8 @@ const PlagiarismChecker: React.FC = () => {
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     className={cn(
-                      "resize-none h-14 transition-all duration-300 border focus:border-primary",
-                      result && "opacity-50"
+                      "resize-none h-14 transition-all duration-300 border focus:border-primary bg-white/80 dark:bg-black/20",
+                      result && "opacity-75"
                     )}
                     disabled={isChecking || !!result}
                   />
@@ -173,8 +207,8 @@ const PlagiarismChecker: React.FC = () => {
                     value={content}
                     onChange={(e) => setContent(e.target.value)}
                     className={cn(
-                      "resize-none min-h-[200px] transition-all duration-300 border focus:border-primary",
-                      result && "opacity-50"
+                      "resize-none min-h-[200px] transition-all duration-300 border focus:border-primary bg-white/80 dark:bg-black/20",
+                      result && "opacity-75"
                     )}
                     disabled={isChecking || !!result}
                   />
@@ -182,7 +216,7 @@ const PlagiarismChecker: React.FC = () => {
               </form>
             </TabsContent>
             
-            <TabsContent value="pdf">
+            <TabsContent value="pdf" className="focus-visible:outline-none focus-visible:ring-0">
               <div className="space-y-6">
                 <div className="space-y-2">
                   <label htmlFor="pdf-title" className="text-sm font-medium">
@@ -194,8 +228,8 @@ const PlagiarismChecker: React.FC = () => {
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     className={cn(
-                      "resize-none h-14 transition-all duration-300 border focus:border-primary",
-                      result && "opacity-50"
+                      "resize-none h-14 transition-all duration-300 border focus:border-primary bg-white/80 dark:bg-black/20",
+                      result && "opacity-75"
                     )}
                     disabled={isChecking || !!result}
                   />
@@ -238,7 +272,7 @@ const PlagiarismChecker: React.FC = () => {
                     <label className="text-sm font-medium">
                       Extracted Text
                     </label>
-                    <div className="bg-muted/30 p-4 rounded-md text-sm max-h-[200px] overflow-y-auto">
+                    <div className="bg-muted/30 p-4 rounded-md text-sm max-h-[200px] overflow-y-auto border">
                       {extractedText}
                     </div>
                   </div>
@@ -249,20 +283,29 @@ const PlagiarismChecker: React.FC = () => {
           
           {result && <PlagiarismResult result={result} className="mt-6" />}
         </CardContent>
-        <CardFooter className="flex justify-end gap-3 border-t p-6 bg-gradient-to-r from-primary/5 to-secondary/5">
+        <CardFooter className="flex justify-end gap-3 border-t p-6 bg-gradient-to-r from-primary/10 to-secondary/10">
           {result ? (
             <div className="w-full flex justify-between items-center">
               <Button 
                 onClick={generateReport} 
-                className="transition-all-200 bg-primary hover:bg-primary/90"
-                disabled={!result}
+                className="transition-all duration-300 bg-primary hover:bg-primary/90"
+                disabled={!result || isGeneratingReport}
               >
-                <Download className="mr-2 h-4 w-4" /> Generate Report
+                {isGeneratingReport ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> 
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <Download className="mr-2 h-4 w-4" /> Generate Report
+                  </>
+                )}
               </Button>
               <Button 
                 onClick={handleReset} 
                 variant="outline"
-                className="transition-all-200"
+                className="transition-all duration-300"
               >
                 Check Another Text
               </Button>
@@ -273,7 +316,7 @@ const PlagiarismChecker: React.FC = () => {
                 variant="outline" 
                 onClick={handleReset}
                 disabled={isChecking || (!title && !content && !pdfFile)}
-                className="transition-all-200"
+                className="transition-all duration-300"
               >
                 Reset
               </Button>
@@ -281,7 +324,7 @@ const PlagiarismChecker: React.FC = () => {
                 onClick={handleSubmit} 
                 disabled={isChecking || (activeTab === 'text' && (!title || !content)) || (activeTab === 'pdf' && (!title || !pdfFile))}
                 className={cn(
-                  "transition-all-200 bg-primary hover:bg-primary/90",
+                  "transition-all duration-300 bg-primary hover:bg-primary/90",
                   isChecking && "animate-pulse-soft"
                 )}
               >

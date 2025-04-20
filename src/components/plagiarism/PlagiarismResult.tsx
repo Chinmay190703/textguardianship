@@ -35,8 +35,7 @@ const PlagiarismResult: React.FC<PlagiarismResultProps> = ({ result, className }
         </div>
         <Progress 
           value={percentage} 
-          className="h-2.5"
-          indicatorClassName={getColorClass()}
+          className={cn("h-2.5", getColorClass())}
         />
         
         <div className="mt-6 rounded-lg border p-4 bg-card shadow-sm">
