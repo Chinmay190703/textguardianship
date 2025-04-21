@@ -46,7 +46,7 @@ export const generatePDFReport = async ({
   doc.setTextColor(0, 0, 0);
   doc.text('Document Title:', 20, 40);
   doc.setFontSize(12);
-  doc.text(title, 20, 47);
+  doc.text(title || 'Untitled Document', 20, 47);
   
   // Plagiarism result
   doc.setFontSize(14);
@@ -89,11 +89,11 @@ export const generatePDFReport = async ({
   doc.text(result.message.replace('⚠️ ', '').replace('✅ ', ''), 20, 112);
   
   // Add matched sources if available
-  let finalY = 112;
+  let finalY = 125;
   if (result.matchedSources && result.matchedSources.length > 0) {
     doc.setFontSize(14);
     doc.setTextColor(0, 0, 0);
-    doc.text('Matched Sources:', 20, finalY + 20);
+    doc.text('Matched Sources:', 20, finalY);
     
     const tableColumn = ['Source', 'Similarity'];
     const tableRows = result.matchedSources.map(source => [
@@ -101,25 +101,31 @@ export const generatePDFReport = async ({
       `${Math.round(source.similarity * 100)}%`
     ]);
     
-    const tableResult = doc.autoTable({
-      startY: finalY + 25,
-      head: [tableColumn],
-      body: tableRows,
-      theme: 'striped',
-      headStyles: { fillColor: [66, 133, 244], textColor: 255 },
-      columnStyles: { 
-        0: { cellWidth: 130 },
-        1: { cellWidth: 30, halign: 'center' }
-      }
-    });
+    try {
+      const tableResult = doc.autoTable({
+        startY: finalY + 5,
+        head: [tableColumn],
+        body: tableRows,
+        theme: 'striped',
+        headStyles: { fillColor: [66, 133, 244], textColor: 255 },
+        columnStyles: { 
+          0: { cellWidth: 130 },
+          1: { cellWidth: 30, halign: 'center' }
+        }
+      });
 
-    finalY = tableResult.finalY;
+      finalY = tableResult.finalY + 10;
+    } catch (error) {
+      console.error('Error generating table:', error);
+      // In case autoTable fails, move down and continue
+      finalY += 20;
+    }
   }
   
   // Add content excerpt
   doc.setFontSize(14);
   doc.setTextColor(0, 0, 0);
-  doc.text('Content Excerpt:', 20, finalY + 10);
+  doc.text('Content Excerpt:', 20, finalY);
   
   doc.setFontSize(10);
   doc.setTextColor(80, 80, 80);
@@ -127,7 +133,14 @@ export const generatePDFReport = async ({
   // Wrap text to fit in page
   const contentExcerpt = content.length > 500 ? content.substring(0, 500) + '...' : content;
   const splitText = doc.splitTextToSize(contentExcerpt, 170);
-  doc.text(splitText, 20, finalY + 20);
+  doc.text(splitText, 20, finalY + 10);
+  
+  // Highlight plagiarized sections if applicable
+  if (result.isPlagiarized) {
+    doc.setFontSize(12);
+    doc.setTextColor(217, 48, 48);
+    doc.text('Warning: This document contains plagiarized content!', 105, 275, { align: 'center' });
+  }
   
   // Footer
   doc.setFontSize(10);

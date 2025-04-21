@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -68,8 +67,8 @@ const PlagiarismChecker: React.FC = () => {
         similarity: mockSimilarity,
         isPlagiarized,
         message: isPlagiarized 
-          ? `⚠️ Plagiarism Detected! Similarity Score: ${mockSimilarity.toFixed(2)}`
-          : `✅ No Plagiarism Detected. Similarity Score: ${mockSimilarity.toFixed(2)}`,
+          ? `⚠️ Plagiarism Detected! Similarity Score: ${(mockSimilarity * 100).toFixed(2)}%`
+          : `✅ No Plagiarism Detected. Similarity Score: ${(mockSimilarity * 100).toFixed(2)}%`,
         matchedSources: mockSources
       });
       
@@ -111,15 +110,26 @@ const PlagiarismChecker: React.FC = () => {
   };
 
   const generateReport = async () => {
-    if (!result) return;
+    if (!result) {
+      toast.error('No plagiarism check results available');
+      return;
+    }
     
     try {
       setIsGeneratingReport(true);
       toast.info('Generating PDF report...');
       
       const textToInclude = activeTab === 'text' ? content : extractedText;
+      const documentTitle = title || 'Untitled Document';
+      
+      console.log('Generating report with:', { 
+        title: documentTitle, 
+        content: textToInclude, 
+        result 
+      });
+      
       const pdfBlob = await generatePDFReport({
-        title,
+        title: documentTitle,
         content: textToInclude,
         result
       });
@@ -128,7 +138,7 @@ const PlagiarismChecker: React.FC = () => {
       const url = URL.createObjectURL(pdfBlob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `plagiarism-report-${title.replace(/\s+/g, '-').toLowerCase()}-${Date.now()}.pdf`;
+      link.download = `plagiarism-report-${documentTitle.replace(/\s+/g, '-').toLowerCase()}-${Date.now()}.pdf`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -137,7 +147,7 @@ const PlagiarismChecker: React.FC = () => {
       toast.success('Report downloaded successfully!');
     } catch (error) {
       console.error('Error generating report:', error);
-      toast.error('Failed to generate report');
+      toast.error('Failed to generate report: ' + (error instanceof Error ? error.message : 'Unknown error'));
     } finally {
       setIsGeneratingReport(false);
     }
