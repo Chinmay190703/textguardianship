@@ -1,7 +1,7 @@
-
 import React from 'react';
 import { cn } from '@/lib/utils';
 import { Search, FileText, Download } from 'lucide-react';
+import { ThemeToggle } from "@/components/theme/ThemeToggle";
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -43,7 +43,12 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children, className }) => {
               <Download className="h-4 w-4" />
               How It Works
             </a>
+            <ThemeToggle />
           </nav>
+          {/* Add toggle to mobile too */}
+          <div className="md:hidden flex items-center">
+            <ThemeToggle />
+          </div>
         </div>
       </header>
       
